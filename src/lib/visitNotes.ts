@@ -38,6 +38,10 @@ export interface VisitedCafeRecord {
   impression: string
 }
 
+export function buildVisitKey(placeName: string, address: string): string {
+  return `${placeName}__${address}`
+}
+
 export async function fetchVisitedNotes(
   userId: string,
 ): Promise<{ data: VisitedCafeRecord[]; error: string | null }> {

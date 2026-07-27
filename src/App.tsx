@@ -1,17 +1,19 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Header } from '@/components/Header'
 import { MapView } from '@/components/MapView'
 import { CafeListSection } from '@/components/CafeListSection'
 import { FailedAddressList } from '@/components/FailedAddressList'
 import { CafeVisitDialog, type VisitDraft } from '@/components/CafeVisitDialog'
 import { VisitedCafeList } from '@/components/VisitedCafeList'
+import { useAuth } from '@/lib/auth'
 import { mockCafes } from '@/data/mockCafes'
 import { parseCafeExcelFile } from '@/lib/excel'
 import { buildCafesFromExcelRows } from '@/lib/geocode'
-import type { VisitedCafeRecord } from '@/lib/visitNotes'
+import { buildVisitKey, fetchVisitedNotes, type VisitedCafeRecord } from '@/lib/visitNotes'
 import type { Cafe } from '@/types/cafe'
 
 function App() {
+  const { user } = useAuth()
   const [cafes, setCafes] = useState<Cafe[]>(mockCafes)
   const [isProcessingExcel, setIsProcessingExcel] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
@@ -20,6 +22,28 @@ function App() {
   const [isVisitDialogOpen, setIsVisitDialogOpen] = useState(false)
   const [focusTarget, setFocusTarget] = useState<{ lat: number; lng: number } | null>(null)
   const [visitedListRefreshKey, setVisitedListRefreshKey] = useState(0)
+  const [visitedKeys, setVisitedKeys] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!user) {
+      setVisitedKeys(new Set())
+      return
+    }
+
+    let cancelled = false
+    fetchVisitedNotes(user.id).then(({ data, error }) => {
+      if (cancelled) return
+      if (error) {
+        console.error('방문한 카페 목록을 불러오지 못했습니다:', error)
+        return
+      }
+      setVisitedKeys(new Set(data.map((record) => buildVisitKey(record.placeName, record.address))))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, visitedListRefreshKey])
 
   async function handleExcelFileSelected(file: File) {
     setIsProcessingExcel(true)
@@ -68,7 +92,12 @@ function App() {
             </p>
           )}
           {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
-          <MapView cafes={cafes} onMarkerClick={handleMarkerClick} focusTarget={focusTarget} />
+          <MapView
+            cafes={cafes}
+            onMarkerClick={handleMarkerClick}
+            focusTarget={focusTarget}
+            visitedKeys={visitedKeys}
+          />
           {failedCafes.length > 0 && <FailedAddressList cafes={failedCafes} />}
           <CafeListSection cafes={cafes} />
         </div>
