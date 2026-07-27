@@ -28,7 +28,7 @@ export function Header({ onExcelFileSelected, isProcessingExcel }: HeaderProps) 
 
   return (
     <header className="flex items-center justify-between border-b border-border px-6 py-4">
-      <h1 className="text-lg font-semibold">우리 동네 카페 지도</h1>
+      <h1 className="text-lg font-semibold">우리 동네 북카페 지도</h1>
       <div className="flex items-center gap-2">
         <input
           ref={fileInputRef}
